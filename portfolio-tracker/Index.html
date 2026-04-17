@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Tracker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; }
+.header { background: #1a1a1a; color: white; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.header h1 { font-size: 16px; font-weight: 500; }
+.sync { font-size: 12px; opacity: 0.5; }
+.sync.ok { color: #4ade80; opacity: 1; }
+.sync.live { color: #4ade80; opacity: 1; font-weight: 600; }
+.sync.manual { color: #fbbf24; opacity: 1; }
+.sync.err { color: #f87171; opacity: 1; }
+.container { max-width: 600px; margin: 0 auto; padding: 1rem; }
+.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+.metric { background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.metric-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+.metric-value { font-size: 20px; font-weight: 600; }
+.positive { color: #16a34a; }
+.negative { color: #dc2626; }
+.tabs { display: flex; background: white; border-radius: 10px; padding: 4px; gap: 4px; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.tab { flex: 1; text-align: center; padding: 8px; border-radius: 7px; border: none; background: transparent; font-size: 13px; cursor: pointer; color: #666; }
+.tab.active { background: #1a1a1a; color: white; font-weight: 500; }
+.card { background: white; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.pos-row { display: flex; justify-content: space-between; align-items: center; }
+.pos-ticker { font-size: 15px; font-weight: 600; }
+.pos-broker { font-size: 11px; color: #666; background: #f0f0f0; padding: 2px 8px; border-radius: 20px; margin-left: 6px; }
+.pos-value { font-size: 15px; font-weight: 600; }
+.pos-detail { font-size: 12px; color: #888; margin-top: 3px; }
+.pos-pnl { font-size: 13px; font-weight: 600; }
+.combined-badge { font-size: 11px; color: #2563eb; background: #eff6ff; padding: 2px 8px; border-radius: 20px; margin-left: 6px; }
+.live-badge { font-size: 10px; color: #16a34a; background: #dcfce7; padding: 2px 6px; border-radius: 20px; margin-left: 6px; }
+.section-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; margin-top: 1rem; }
+label { font-size: 12px; color: #666; display: block; margin-bottom: 3px; }
+input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; }
+input:focus, select:focus, textarea:focus { border-color: #1a1a1a; }
+textarea { resize: vertical; min-height: 100px; font-family: monospace; font-size: 13px; line-height: 1.6; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.btn { padding: 10px 18px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-family: inherit; }
+.btn-primary { background: #1a1a1a; color: white; }
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.subtabs { display: flex; gap: 6px; margin-bottom: 1rem; }
+.subtab { padding: 5px 14px; border-radius: 20px; border: 1px solid #e0e0e0; background: white; font-size: 12px; cursor: pointer; color: #666; }
+.subtab.active { background: #1a1a1a; color: white; border-color: #1a1a1a; }
+.hint { font-size: 12px; color: #666; background: #f8f8f8; border-radius: 8px; padding: 10px 12px; line-height: 1.6; margin-bottom: 12px; }
+.empty { text-align: center; color: #aaa; font-size: 13px; padding: 2rem 0; }
+.delete-btn { font-size: 11px; color: #dc2626; background: none; border: none; cursor: pointer; padding: 2px 6px; }
+.trade-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-top: 1px solid #f5f5f5; margin-top: 6px; }
+.msg-ok { font-size: 12px; color: #16a34a; margin-top: 8px; }
+.msg-err { font-size: 12px; color: #dc2626; margin-top: 8px; }
+.price-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.price-live-tag { font-size: 10px; color: #16a34a; background: #dcfce7; padding: 2px 6px; border-radius: 20px; white-space: nowrap; }
+.price-manual-tag { font-size: 10px; color: #92400e; background: #fef3c7; padding: 2px 6px; border-radius: 20px; white-space: nowrap; }
+.loading { text-align: center; color: #aaa; font-size: 13px; padding: 1.5rem 0; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #eee; border-top-color: #888; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Portfolio Tracker</h1>
+  <span class="sync" id="sync">Cargando...</span>
+</div>
+<div class="container">
+  <div class="summary-grid">
+    <div class="metric"><div class="metric-label">Invertido</div><div class="metric-value" id="total-invested">-</div></div>
+    <div class="metric"><div class="metric-label">Valor actual</div><div class="metric-value" id="total-current">-</div></div>
+    <div class="metric"><div class="metric-label">P&L total</div><div class="metric-value" id="total-pnl">-</div></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('positions')">Posiciones</button>
+    <button class="tab" onclick="showTab('add')">+ Trade</button>
+    <button class="tab" onclick="showTab('prices')">Precios</button>
+  </div>
+  <div id="tab-positions">
+    <div id="positions-list"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+  </div>
+  <div id="tab-add" style="display:none">
+    <div class="subtabs">
+      <button class="subtab active" onclick="showSubtab('form')">Formulario</button>
+      <button class="subtab" onclick="showSubtab('text')">Texto rapido</button>
+    </div>
+    <div id="subtab-form">
+      <div class="card">
+        <div class="form-grid">
+          <div><label>Ticker</label><input type="text" id="f-ticker" placeholder="VOO" oninput="this.value=this.value.toUpperCase()"></div>
+          <div><label>Broker</label><select id="f-broker"><option>IBKR</option><option>XTB</option><option>Binance</option><option>Dollar App</option><option>Otro</option></select></div>
+        </div>
+        <div class="form-grid-3">
+          <div><label>Acciones</label><input type="number" id="f-shares" placeholder="0.0000" step="0.0001" min="0"></div>
+          <div><label>Precio compra</label><input type="number" id="f-price" placeholder="0.00" step="0.01" min="0"></div>
+          <div><label>Tipo</label><select id="f-type"><option value="stock">Stock</option><option value="etf">ETF</option><option value="crypto">Crypto</option></select></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="addTradeForm()">Registrar compra</button></div>
+        <div id="form-msg"></div>
+      </div>
+    </div>
+    <div id="subtab-text" style="display:none">
+      <div class="card">
+        <div class="hint">Una posicion por linea:<br><b>TICKER acciones @ precio - BROKER</b><br><br>IREN 8.846 @ 54.12 - XTB<br>VOO 0.4779 @ 653.69 - XTB<br>NU 29.5 @ 15.36 - XTB</div>
+        <textarea id="f-text" placeholder="TICKER acciones @ precio - BROKER"></textarea>
+        <div class="btn-row"><button class="btn btn-primary" onclick="parseText()">Importar</button></div>
+        <div id="text-msg"></div>
+      </div>
+    </div>
+  </div>
+  <div id="tab-prices" style="display:none">
+    <div class="card">
+      <div class="hint">Los precios en vivo se actualizan automaticamente desde Yahoo Finance cada 5 minutos. Puedes sobreescribir cualquier precio manualmente.</div>
+      <div class="btn-row" style="margin-bottom:12px;">
+        <button class="btn btn-secondary" onclick="refreshLivePrices()">Actualizar precios ahora</button>
+      </div>
+      <div id="price-inputs"><div class="loading">Cargando...</div></div>
+    </div>
+  </div>
+</div>
+<script>
+var trades = [];
+var prices = {};
+var livePrices = {};   // prices fetched live from Yahoo via server
+var liveRefreshTimer = null;
+
+function setSync(msg, type) {
+  var el = document.getElementById('sync');
+  el.textContent = msg;
+  el.className = 'sync ' + (type || '');
+}
+
+function call(fn, args, cb, errCb) {
+  var runner = google.script.run
+    .withSuccessHandler(cb)
+    .withFailureHandler(errCb || function(e) { setSync('Error: ' + e.message, 'err'); });
+  runner[fn].apply(runner, args || []);
+}
+
+function loadAll() {
+  setSync('Cargando...');
+  call('getTrades', [], function(t) {
+    trades = t || [];
+    call('getPrices', [], function(p) {
+      prices = p || {};
+      renderPositions();
+      refreshLivePrices();         // fetch live prices on initial load
+      scheduleLiveRefresh();       // then every 5 minutes
+    });
+  });
+}
+
+// Schedules automatic live-price refresh every 5 minutes.
+function scheduleLiveRefresh() {
+  if (liveRefreshTimer) clearInterval(liveRefreshTimer);
+  liveRefreshTimer = setInterval(refreshLivePrices, 5 * 60 * 1000);
+}
+
+// Calls the Apps Script server to fetch Yahoo Finance prices.
+function refreshLivePrices() {
+  var tickers = [];
+  trades.forEach(function(t) { if (tickers.indexOf(t.ticker) === -1) tickers.push(t.ticker); });
+  if (tickers.length === 0) { setSync('Sincronizado', 'ok'); return; }
+
+  setSync('Actualizando precios...', '');
+  call('fetchLivePrices', [tickers], function(result) {
+    if (result && result.prices) {
+      livePrices = result.prices;
+      // Merge: live prices override stored prices
+      Object.keys(livePrices).forEach(function(ticker) {
+        prices[ticker] = livePrices[ticker];
+      });
+      if (result.liveCount === result.totalCount) {
+        setSync('En vivo', 'live');
+      } else if (result.liveCount > 0) {
+        setSync('Parcial (' + result.liveCount + '/' + result.totalCount + ')', 'manual');
+      } else {
+        setSync('Manual', 'manual');
+      }
+    } else {
+      setSync('Manual', 'manual');
+    }
+    renderPositions();
+    var currentTab = document.querySelector('#tab-prices').style.display;
+    if (currentTab !== 'none') renderPriceInputs();
+  }, function() {
+    setSync('Manual', 'manual');
+    renderPositions();
+  });
+}
+
+function showTab(tab) {
+  ['positions', 'add', 'prices'].forEach(function(t) {
+    document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(function(el, i) {
+    el.classList.toggle('active', ['positions', 'add', 'prices'][i] === tab);
+  });
+  if (tab === 'prices') renderPriceInputs();
+}
+
+function showSubtab(sub) {
+  ['form', 'text'].forEach(function(s) {
+    document.getElementById('subtab-' + s).style.display = s === sub ? 'block' : 'none';
+  });
+  document.querySelectorAll('.subtab').forEach(function(el, i) {
+    el.classList.toggle('active', ['form', 'text'][i] === sub);
+  });
+}
+
+function addTradeForm() {
+  var ticker = document.getElementById('f-ticker').value.trim().toUpperCase();
+  var broker = document.getElementById('f-broker').value;
+  var shares = parseFloat(document.getElementById('f-shares').value);
+  var price = parseFloat(document.getElementById('f-price').value);
+  var type = document.getElementById('f-type').value;
+  var msg = document.getElementById('form-msg');
+  if (!ticker || isNaN(shares) || isNaN(price) || shares <= 0 || price <= 0) {
+    msg.innerHTML = '<div class="msg-err">Completa todos los campos</div>'; return;
+  }
+  msg.innerHTML = '<div class="loading"><span class="spinner"></span>Guardando...</div>';
+  var trade = { id: Date.now(), ticker: ticker, broker: broker, shares: shares, price: price, type: type, date: new Date().toLocaleDateString('es-CO') };
+  call('addTrade', [trade], function() {
+    trades.push(trade);
+    if (!prices[ticker]) prices[ticker] = price;
+    msg.innerHTML = '<div class="msg-ok">Guardado en Google Sheets</div>';
+    document.getElementById('f-ticker').value = '';
+    document.getElementById('f-shares').value = '';
+    document.getElementById('f-price').value = '';
+    renderPositions();
+    setTimeout(function() { showTab('positions'); }, 800);
+  });
+}
+
+function parseText() {
+  var raw = document.getElementById('f-text').value.trim();
+  var lines = raw.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+  var msg = document.getElementById('text-msg');
+  var pending = lines.length;
+  var added = 0;
+  var errors = [];
+  if (pending === 0) return;
+  msg.innerHTML = '<div class="loading"><span class="spinner"></span>Importando...</div>';
+  lines.forEach(function(line, idx) {
+    var match = line.match(/^([A-Z0-9.]+)\s+([\d.]+)\s*[@]\s*([\d.]+)\s*[-]\s*(.+)$/i);
+    if (!match) {
+      errors.push('Linea ' + (idx + 1) + ': formato no reconocido');
+      pending--;
+      if (pending === 0) done();
+      return;
+    }
+    var trade = { id: Date.now() + idx, ticker: match[1].toUpperCase(), broker: match[4].trim(), shares: parseFloat(match[2]), price: parseFloat(match[3]), type: 'stock', date: new Date().toLocaleDateString('es-CO') };
+    call('addTrade', [trade], function() {
+      trades.push(trade);
+      if (!prices[trade.ticker]) prices[trade.ticker] = trade.price;
+      added++; pending--;
+      if (pending === 0) done();
+    }, function() {
+      errors.push('Linea ' + (idx + 1) + ': error');
+      pending--;
+      if (pending === 0) done();
+    });
+  });
+  function done() {
+    renderPositions();
+    if (errors.length > 0) {
+      msg.innerHTML = '<div class="msg-err">' + errors.join('<br>') + '</div>';
+    } else {
+      msg.innerHTML = '<div class="msg-ok">' + added + ' posicion(es) guardada(s)</div>';
+      document.getElementById('f-text').value = '';
+      setTimeout(function() { showTab('positions'); }, 800);
+    }
+  }
+}
+
+function deleteTrade(id) {
+  if (!confirm('Eliminar este trade?')) return;
+  call('deleteTrade', [id], function() {
+    trades = trades.filter(function(t) { return t.id != id; });
+    renderPositions();
+  });
+}
+
+function getConsolidated() {
+  var map = {};
+  trades.forEach(function(t) {
+    var key = t.ticker + '|' + t.broker;
+    if (!map[key]) map[key] = { ticker: t.ticker, broker: t.broker, totalShares: 0, totalCost: 0, trades: [] };
+    map[key].totalShares += parseFloat(t.shares);
+    map[key].totalCost += parseFloat(t.shares) * parseFloat(t.price);
+    map[key].trades.push(t);
+  });
+  return Object.values(map);
+}
+
+function getCombined() {
+  var map = {};
+  trades.forEach(function(t) {
+    if (!map[t.ticker]) map[t.ticker] = { ticker: t.ticker, totalShares: 0, totalCost: 0, brokers: [] };
+    map[t.ticker].totalShares += parseFloat(t.shares);
+    map[t.ticker].totalCost += parseFloat(t.shares) * parseFloat(t.price);
+    if (map[t.ticker].brokers.indexOf(t.broker) === -1) map[t.ticker].brokers.push(t.broker);
+  });
+  return Object.values(map).filter(function(p) { return p.brokers.length > 1; });
+}
+
+function isLive(ticker) {
+  return livePrices.hasOwnProperty(ticker);
+}
+
+function renderPositions() {
+  var consolidated = getConsolidated();
+  var combined = getCombined();
+  var el = document.getElementById('positions-list');
+  if (consolidated.length === 0) { el.innerHTML = '<div class="empty">No hay posiciones registradas</div>'; updateSummary(); return; }
+  var html = '';
+  if (combined.length > 0) {
+    html += '<div class="section-label">Combinado (multi-broker)</div>';
+    combined.forEach(function(p) {
+      var avg = p.totalCost / p.totalShares;
+      var cur = parseFloat(prices[p.ticker]) || avg;
+      var val = p.totalShares * cur;
+      var pnl = val - p.totalCost;
+      var pct = pnl / p.totalCost * 100;
+      var liveTag = isLive(p.ticker) ? '<span class="live-badge">en vivo</span>' : '';
+      html += '<div class="card" style="border-left:3px solid #2563eb;">';
+      html += '<div class="pos-row"><div style="display:flex;align-items:center;"><span class="pos-ticker">' + p.ticker + '</span>' + liveTag + '<span class="combined-badge">combinado</span><span style="font-size:11px;color:#888;margin-left:6px;">' + p.brokers.join(' + ') + '</span></div><span class="pos-value">$' + val.toFixed(2) + '</span></div>';
+      html += '<div class="pos-row" style="margin-top:4px;"><span class="pos-detail">' + p.totalShares.toFixed(4) + ' acc avg $' + avg.toFixed(2) + '</span><span class="pos-pnl ' + (pnl >= 0 ? 'positive' : 'negative') + '">' + (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2) + ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)</span></div>';
+      html += '</div>';
+    });
+    html += '<div class="section-label" style="margin-top:1.5rem;">Por broker</div>';
+  }
+  consolidated.forEach(function(p) {
+    var avg = p.totalCost / p.totalShares;
+    var cur = parseFloat(prices[p.ticker]) || avg;
+    var val = p.totalShares * cur;
+    var pnl = val - p.totalCost;
+    var pct = pnl / p.totalCost * 100;
+    var liveTag = isLive(p.ticker) ? '<span class="live-badge">en vivo</span>' : '';
+    html += '<div class="card">';
+    html += '<div class="pos-row"><div style="display:flex;align-items:center;"><span class="pos-ticker">' + p.ticker + '</span>' + liveTag + '<span class="pos-broker">' + p.broker + '</span></div><span class="pos-value">$' + val.toFixed(2) + '</span></div>';
+    html += '<div class="pos-row" style="margin-top:4px;"><span class="pos-detail">' + p.totalShares.toFixed(4) + ' acc avg $' + avg.toFixed(2) + ' - ' + p.trades.length + ' trade(s)</span><span class="pos-pnl ' + (pnl >= 0 ? 'positive' : 'negative') + '">' + (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2) + ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)</span></div>';
+    html += p.trades.map(function(t) {
+      return '<div class="trade-row"><span style="font-size:11px;color:#888;">' + t.date + ' - ' + parseFloat(t.shares).toFixed(4) + ' acc @ $' + parseFloat(t.price).toFixed(2) + '</span><button class="delete-btn" onclick="deleteTrade(' + t.id + ')">eliminar</button></div>';
+    }).join('');
+    html += '</div>';
+  });
+  el.innerHTML = html;
+  updateSummary();
+}
+
+function updateSummary() {
+  var consolidated = getConsolidated();
+  var inv = 0, cur = 0;
+  consolidated.forEach(function(p) {
+    var cp = parseFloat(prices[p.ticker]) || (p.totalCost / p.totalShares);
+    inv += p.totalCost;
+    cur += p.totalShares * cp;
+  });
+  var pnl = cur - inv;
+  document.getElementById('total-invested').textContent = '$' + inv.toFixed(2);
+  document.getElementById('total-current').textContent = '$' + cur.toFixed(2);
+  var el = document.getElementById('total-pnl');
+  el.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+  el.className = 'metric-value ' + (pnl >= 0 ? 'positive' : 'negative');
+}
+
+function renderPriceInputs() {
+  var tickers = [];
+  trades.forEach(function(t) { if (tickers.indexOf(t.ticker) === -1) tickers.push(t.ticker); });
+  var el = document.getElementById('price-inputs');
+  if (tickers.length === 0) { el.innerHTML = '<div class="empty">No hay tickers</div>'; return; }
+  el.innerHTML = tickers.map(function(ticker) {
+    var tag = isLive(ticker)
+      ? '<span class="price-live-tag">en vivo</span>'
+      : '<span class="price-manual-tag">manual</span>';
+    return '<div class="price-row"><span style="font-size:14px;font-weight:600;min-width:65px;">' + ticker + '</span>' + tag + '<input type="number" step="0.01" value="' + (prices[ticker] || '') + '" placeholder="Precio USD" style="flex:1;" onchange="manualUpdatePrice(\'' + ticker + '\',this.value)"></div>';
+  }).join('');
+}
+
+// Manual price override — saves to Sheets and clears live tag for that ticker.
+function manualUpdatePrice(ticker, val) {
+  var v = parseFloat(val);
+  if (isNaN(v) || v <= 0) return;
+  prices[ticker] = v;
+  delete livePrices[ticker];   // manual override removes live status for this ticker
+  call('updatePrice', [ticker, v], function() {
+    renderPositions();
+    renderPriceInputs();
+    setSync('Precio actualizado', 'ok');
+    setTimeout(function() {
+      var liveCount = Object.keys(livePrices).length;
+      var totalCount = Object.keys(prices).length;
+      if (liveCount === totalCount && totalCount > 0) setSync('En vivo', 'live');
+      else if (liveCount > 0) setSync('Parcial (' + liveCount + '/' + totalCount + ')', 'manual');
+      else setSync('Manual', 'manual');
+    }, 2000);
+  });
+}
+
+loadAll();
+</script>
+</body>
+</html>
